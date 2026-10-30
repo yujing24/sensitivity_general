@@ -5,53 +5,12 @@ rm(list=ls())
 library(ggplot2)
 library(dplyr)
 
+source("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm/1. function_inference.R")
 setwd("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm")
-
-
-######## Load the original simulated data ########
-{
-  
-  # ARC_data <- readRDS("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/ARC_data.rds")
-  # 
-  # orig_simu_trt <- filter(ARC_data, Trt == "home_visits")
-  # orig_simu_crl <- filter(ARC_data, Trt == "control")
-  # 
-}
-
 
 Alpha_seq = c(-0.8, -0.4, 0, 0.4, 0.8, 1.2)
 spline_seq <- seq(60, 460, by = 1)
 range_value <- c(0.2, 0.5)
-
-
-# calculate bootstrap t confidence interval or JN confidence interval
-Wald_CI <- function(alpha, refer_mean, var_paraboot, month){
-  
-  Alpha_seq = c(-0.8, -0.4, 0, 0.4, 0.8, 1.2)
-  mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
-  
-  CI_left <- mean_orig - qnorm(0.975) * sqrt(var_paraboot)
-  CI_right <- mean_orig + qnorm(0.975) * sqrt(var_paraboot)
-  
-  return(c(mean_orig,  CI_left, CI_right))
-}
-
-paraboot_var <- function(data, alpha, month){
-  
-  Month <- c(3, 6, 9, 12)
-  Alpha_seq = c(-0.8, -0.4, 0, 0.4, 0.8, 1.2)
-  index_month <- which(Month == month) + 1
-  index_alpha <- which(Alpha_seq == alpha)
-  
-  Est_paraboot <- rep(NA, length(data))
-  for(j in 1:length(data)){
-    temp <- data[[j]][[1]]
-    Est_paraboot[j] <- log(temp[index_alpha, index_month])
-  }
-  var_paraboot <- var(Est_paraboot)
-  
-  return(var_paraboot)
-}
 
 
 ## logit, weight1 
@@ -75,17 +34,19 @@ paraboot_var <- function(data, alpha, month){
     SIM_control_09 <- Orig_res_crl[[1]][, 4]
     SIM_control_12 <- Orig_res_crl[[1]][, 5]
     
-    
     ##### month = 3 #####
     month <- 3
     alpha <- -0.8
-    refer_mean <- SIM_control_03 
-    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-    t_SIM_control_03  <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_03), var_paraboot, month))
+    refer_mean <- SIM_control_03 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_control_03  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_03), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_control_03  <- rbind(t_SIM_control_03, temp)
     }
     
@@ -99,13 +60,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 6 #####
     month <- 6
     alpha <- -0.8
-    refer_mean <- SIM_control_06 
-    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-    t_SIM_control_06  <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_06), var_paraboot, month))
+    refer_mean <- SIM_control_06 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_control_06  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_06), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_control_06  <- rbind(t_SIM_control_06, temp)
     }
     
@@ -119,13 +83,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 9 #####
     month <- 9
     alpha <- -0.8
-    refer_mean <- SIM_control_09 
-    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-    t_SIM_control_09  <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_09), var_paraboot, month))
+    refer_mean <- SIM_control_09 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_control_09  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_09), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_control_09  <- rbind(t_SIM_control_09, temp)
     }
     
@@ -138,13 +105,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 12 #####
     month <- 12
     alpha <- -0.8
-    refer_mean <- SIM_control_12
-    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-    t_SIM_control_12  <-  exp(Wald_CI(alpha, refer_mean = log(SIM_control_12), var_paraboot, month))
+    refer_mean <- SIM_control_12 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_control_12  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_12), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_control_12  <- rbind(t_SIM_control_12, temp)
     }
     
@@ -208,13 +178,17 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 3 #####
     month <- 3
     alpha <- -0.8
-    refer_mean <- SIM_treat_03 
-    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-    t_SIM_treat_03  <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_03), var_paraboot, month))
+    refer_mean <- SIM_treat_03 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_treat_03  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
+    
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_03), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_treat_03  <- rbind(t_SIM_treat_03, temp)
     }
     
@@ -228,13 +202,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 6 #####
     month <- 6
     alpha <- -0.8
-    refer_mean <- SIM_treat_06 
-    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-    t_SIM_treat_06  <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_06), var_paraboot, month))
+    refer_mean <- SIM_treat_06 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_treat_06  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_06), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_treat_06  <- rbind(t_SIM_treat_06, temp)
     }
     
@@ -248,13 +225,17 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 9 #####
     month <- 9
     alpha <- -0.8
-    refer_mean <- SIM_treat_09 
-    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-    t_SIM_treat_09  <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_09), var_paraboot, month))
+    refer_mean <- SIM_treat_09 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_treat_09  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
+    
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_09), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_treat_09  <- rbind(t_SIM_treat_09, temp)
     }
     
@@ -267,13 +248,17 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 12 #####
     month <- 12
     alpha <- -0.8
-    refer_mean <- SIM_treat_12
-    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-    t_SIM_treat_12  <-  exp(Wald_CI(alpha, refer_mean = log(SIM_treat_12), var_paraboot, month))
+    refer_mean <- SIM_treat_12 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_treat_12  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
+    
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_12), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_treat_12  <- rbind(t_SIM_treat_12, temp)
     }
     
@@ -354,13 +339,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 3 #####
     month <- 3
     alpha <- -0.8
-    refer_mean <- SIM_control_03 
-    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-    t_SIM_control_03  <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_03), var_paraboot, month))
+    refer_mean <- SIM_control_03 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_control_03  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_03), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_control_03  <- rbind(t_SIM_control_03, temp)
     }
     
@@ -374,13 +362,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 6 #####
     month <- 6
     alpha <- -0.8
-    refer_mean <- SIM_control_06 
-    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-    t_SIM_control_06  <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_06), var_paraboot, month))
+    refer_mean <- SIM_control_06 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_control_06  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_06), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_control_06  <- rbind(t_SIM_control_06, temp)
     }
     
@@ -394,13 +385,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 9 #####
     month <- 9
     alpha <- -0.8
-    refer_mean <- SIM_control_09 
-    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-    t_SIM_control_09  <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_09), var_paraboot, month))
+    refer_mean <- SIM_control_09 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_control_09  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_09), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_control_09  <- rbind(t_SIM_control_09, temp)
     }
     
@@ -413,13 +407,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 12 #####
     month <- 12
     alpha <- -0.8
-    refer_mean <- SIM_control_12
-    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-    t_SIM_control_12  <-  exp(Wald_CI(alpha, refer_mean = log(SIM_control_12), var_paraboot, month))
+    refer_mean <- SIM_control_12 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_control_12  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_control_12), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_crl, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_control_12  <- rbind(t_SIM_control_12, temp)
     }
     
@@ -483,13 +480,17 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 3 #####
     month <- 3
     alpha <- -0.8
-    refer_mean <- SIM_treat_03 
-    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-    t_SIM_treat_03  <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_03), var_paraboot, month))
+    refer_mean <- SIM_treat_03 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_treat_03  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
+    
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_03), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_treat_03  <- rbind(t_SIM_treat_03, temp)
     }
     
@@ -503,13 +504,16 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 6 #####
     month <- 6
     alpha <- -0.8
-    refer_mean <- SIM_treat_06 
-    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-    t_SIM_treat_06  <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_06), var_paraboot, month))
+    refer_mean <- SIM_treat_06 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_treat_06  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_06), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_treat_06  <- rbind(t_SIM_treat_06, temp)
     }
     
@@ -523,13 +527,17 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 9 #####
     month <- 9
     alpha <- -0.8
-    refer_mean <- SIM_treat_09 
-    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-    t_SIM_treat_09  <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_09), var_paraboot, month))
+    refer_mean <- SIM_treat_09 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_treat_09  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
+    
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_09), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_treat_09  <- rbind(t_SIM_treat_09, temp)
     }
     
@@ -542,13 +550,17 @@ paraboot_var <- function(data, alpha, month){
     ##### month = 12 #####
     month <- 12
     alpha <- -0.8
-    refer_mean <- SIM_treat_12
-    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-    t_SIM_treat_12  <-  exp(Wald_CI(alpha, refer_mean = log(SIM_treat_12), var_paraboot, month))
+    refer_mean <- SIM_treat_12 |> qlogis()
+    
+    var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+    t_SIM_treat_12  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
+    
     
     for(alpha in Alpha_seq[-1]){
-      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month)
-      temp <- exp(Wald_CI(alpha, refer_mean = log(SIM_treat_12), var_paraboot, month))
+      var_paraboot <- paraboot_var(data = data_paraboot_trt, alpha, month, Alpha_seq = Alpha_seq, link = "logit")
+      mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+      temp <- Wald_CI(mean_orig, var_orig = var_paraboot) |> plogis()
       t_SIM_treat_12  <- rbind(t_SIM_treat_12, temp)
     }
     

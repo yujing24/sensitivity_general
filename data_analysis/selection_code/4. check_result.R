@@ -235,7 +235,6 @@ library(monotone) # unimonotone
     
   }
   
-  
   # logit, weight2
   {
     
@@ -314,8 +313,14 @@ library(monotone) # unimonotone
   crl_logit_weight2_corr
   
   
+  setwd("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm/select_alpha/onestep_adaptive")
+  Boot_num <- 200
   
-  # identity - not run
+  # search_method = "grid"
+  search_method = "adaptive"
+  
+  
+  # identity
   {
     
     # trt
@@ -324,7 +329,7 @@ library(monotone) # unimonotone
     Alpha_l_trt_point_orig <- orig_trt_identity[[1]][1]
     Alpha_u_trt_point_orig <- orig_trt_identity[[1]][2]
     
-    corr_trt_identity <- readRDS(paste0('bias_correct_', Boot_num, '/corr_trt_identity.RData'))
+    corr_trt_identity <- readRDS(paste0('bias_correct_', Boot_num, '/corr_trt_identity_', search_method, '.RData'))
     
     Boot_est_l <- rep(NA, Boot_num)
     Boot_est_u <- rep(NA, Boot_num)
@@ -355,7 +360,7 @@ library(monotone) # unimonotone
     Alpha_l_crl_point_orig <- orig_crl_identity[[1]][1]
     Alpha_u_crl_point_orig <- orig_crl_identity[[1]][2]
     
-    corr_crl_identity <- readRDS(paste0('bias_correct_', Boot_num, '/corr_crl_identity.RData'))
+    corr_crl_identity <- readRDS(paste0('bias_correct_', Boot_num, '/corr_crl_identity_', search_method, '.RData'))
     
     Boot_est_l <- rep(NA, Boot_num)
     Boot_est_u <- rep(NA, Boot_num)
@@ -401,7 +406,7 @@ library(monotone) # unimonotone
   # log, treat
   {
     
-    # trt
+    # # # trt
     # Orig <- readRDS("orig_trt_log_weight1.RData")
     # temp <-  readRDS("double_400_50/double_trt_log_weight1_adaptive.RData")
     # # temp <-  readRDS("double_400_50/double_trt_log_weight1_grid.RData")
@@ -409,8 +414,8 @@ library(monotone) # unimonotone
     Orig <- readRDS("orig_trt_log_weight2.RData")
     temp <-  readRDS("double_400_50/double_trt_log_weight2_adaptive.RData")
     # temp <-  readRDS("double_400_50/double_trt_log_weight2_grid.RData")
-    
-    
+
+
     alpha_u_boot_outer_orig <- rep(NA, B_outer)
     alpha_l_boot_outer_orig <- rep(NA, B_outer)
     alpha_u_boot_outer_corr <- rep(NA, B_outer)
@@ -437,11 +442,18 @@ library(monotone) # unimonotone
     Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = T)
       
     # Percentile CI
-    CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # 
+    # CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T)
     
-    CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T)
+    # Basic bootstrap confidence interval
+    CI_perc_upper_alpha_u_trt_corr1 <- 2* Orig_corr_u - quantile(alpha_u_boot_outer_corr, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_corr1 <- 2* Orig_corr_l - quantile(alpha_l_boot_outer_corr, 0.975, na.rm = T)
+    
+    CI_perc_upper_alpha_u_trt_orig1 <- 2* Orig[[1]][2] - quantile(alpha_u_boot_outer_orig, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_orig1 <- 2* Orig[[1]][1] - quantile(alpha_l_boot_outer_orig, 0.975, na.rm = T)
     
     # Wald CI
     CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = T) # extra
@@ -451,12 +463,12 @@ library(monotone) # unimonotone
     CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2]  + qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = T) # extra
     
     
-    # percentile CI
-    c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
+    # Basic bootstrap CI
+    # c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
     c(CI_perc_low_alpha_l_trt_corr1, CI_perc_upper_alpha_u_trt_corr1)
     
     # Wald CI
-    c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
+    # c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
     c(CI_perc_low_alpha_l_trt_corr2, CI_perc_upper_alpha_u_trt_corr2)
     
     
@@ -518,16 +530,16 @@ library(monotone) # unimonotone
 
   # log, control
   {
-    
-    # crl
+
+    # # crl
     # Orig <- readRDS("orig_crl_log_weight1.RData")
     # temp <-  readRDS("double_400_50/double_crl_log_weight1_adaptive.RData")
     # # temp <-  readRDS("double_400_50/double_crl_log_weight1_grid.RData")
-    
+
     Orig <- readRDS("orig_crl_log_weight2.RData")
     temp <-  readRDS("double_400_50/double_crl_log_weight2_adaptive.RData")
     # temp <-  readRDS("double_400_50/double_crl_log_weight2_grid.RData")
-    
+
     alpha_u_boot_outer_orig <- rep(NA, B_outer)
     alpha_l_boot_outer_orig <- rep(NA, B_outer)
     alpha_u_boot_outer_corr <- rep(NA, B_outer)
@@ -552,12 +564,19 @@ library(monotone) # unimonotone
     Orig_corr_l <- 2 * Orig[[1]][1] - mean(alpha_l_boot_outer_orig, na.rm = T)
     Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = T)
     
-    # Percentile CI
-    CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # # Percentile CI
+    # CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # 
+    # CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
     
-    CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
+    # Basic bootstrap confidence interval
+    CI_perc_upper_alpha_u_trt_corr1 <- 2* Orig_corr_u - quantile(alpha_u_boot_outer_corr, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_corr1 <- 2* Orig_corr_l - quantile(alpha_l_boot_outer_corr, 0.975, na.rm = T)
+    
+    CI_perc_upper_alpha_u_trt_orig1 <- 2* Orig[[1]][2] - quantile(alpha_u_boot_outer_orig, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_orig1 <- 2* Orig[[1]][1] - quantile(alpha_l_boot_outer_orig, 0.975, na.rm = T)
     
     # Wald CI
     CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = T) # extra
@@ -567,11 +586,11 @@ library(monotone) # unimonotone
     CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2]  + qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = T) # extra
     
     # percentile CI
-    c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
+    # c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
     c(CI_perc_low_alpha_l_trt_corr1, CI_perc_upper_alpha_u_trt_corr1)
     
     # Wald CI
-    c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
+    # c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
     c(CI_perc_low_alpha_l_trt_corr2, CI_perc_upper_alpha_u_trt_corr2)
     
     max(NA_count_u_i)
@@ -608,12 +627,19 @@ library(monotone) # unimonotone
     Orig_corr_l <- 2 * Orig[[1]][1] - mean(alpha_l_boot_outer_orig, na.rm = T)
     Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = T)
     
-    # Percentile CI
-    CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # # Percentile CI
+    # CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # 
+    # CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
     
-    CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
+    # Basic bootstrap confidence interval
+    CI_perc_upper_alpha_u_trt_corr1 <- 2* Orig_corr_u - quantile(alpha_u_boot_outer_corr, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_corr1 <- 2* Orig_corr_l - quantile(alpha_l_boot_outer_corr, 0.975, na.rm = T)
+    
+    CI_perc_upper_alpha_u_trt_orig1 <- 2* Orig[[1]][2] - quantile(alpha_u_boot_outer_orig, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_orig1 <- 2* Orig[[1]][1] - quantile(alpha_l_boot_outer_orig, 0.975, na.rm = T)
     
     # Wald CI
     CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = T) # extra
@@ -632,12 +658,13 @@ library(monotone) # unimonotone
   }
   
   
-  # identity - not run
+  # identity 
   {
     
     # trt
     Orig <- readRDS("orig_trt_identity.RData")
-    temp <-  readRDS("double_400_50/double_trt_identity.RData")
+    temp <-  readRDS("double_400_50/double_trt_identity_adaptive.RData")
+    # temp <-  readRDS("double_400_50/double_trt_identity_grid.RData")
     
     alpha_u_boot_outer_orig <- rep(NA, B_outer)
     alpha_l_boot_outer_orig <- rep(NA, B_outer)
@@ -663,12 +690,19 @@ library(monotone) # unimonotone
     Orig_corr_l <- 2 * Orig[[1]][1] - mean(alpha_l_boot_outer_orig, na.rm = T)
     Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = T)
     
-    # Percentile CI
-    CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # # Percentile CI
+    # CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # 
+    # CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
     
-    CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
+    # Basic bootstrap confidence interval
+    CI_perc_upper_alpha_u_trt_corr1 <- 2* Orig_corr_u - quantile(alpha_u_boot_outer_corr, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_corr1 <- 2* Orig_corr_l - quantile(alpha_l_boot_outer_corr, 0.975, na.rm = T)
+    
+    CI_perc_upper_alpha_u_trt_orig1 <- 2* Orig[[1]][2] - quantile(alpha_u_boot_outer_orig, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_orig1 <- 2* Orig[[1]][1] - quantile(alpha_l_boot_outer_orig, 0.975, na.rm = T)
     
     # Wald CI
     CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = T) # extra
@@ -677,8 +711,14 @@ library(monotone) # unimonotone
     CI_perc_low_alpha_l_trt_orig2 <- Orig[[1]][1]  - qnorm(0.975) * sd(alpha_l_boot_outer_orig, na.rm = T) # extra
     CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2]  + qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = T) # extra
     
-    c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
+    
+    # Basic bootstrap CI
+    # c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
     c(CI_perc_low_alpha_l_trt_corr1, CI_perc_upper_alpha_u_trt_corr1)
+    
+    # Wald CI
+    # c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
+    c(CI_perc_low_alpha_l_trt_corr2, CI_perc_upper_alpha_u_trt_corr2)
     
     max(NA_count_u_i)
     max(NA_count_l_i)
@@ -688,7 +728,8 @@ library(monotone) # unimonotone
     
     # crl
     Orig <- readRDS("orig_crl_identity.RData")
-    temp <-  readRDS("double_400_50/double_crl_identity.RData")
+    temp <-  readRDS("double_400_50/double_crl_identity_adaptive.RData")
+    # temp <-  readRDS("double_400_50/double_crl_identity_grid.RData")
     
     alpha_u_boot_outer_orig <- rep(NA, B_outer)
     alpha_l_boot_outer_orig <- rep(NA, B_outer)
@@ -715,12 +756,20 @@ library(monotone) # unimonotone
     Orig_corr_l <- 2 * Orig[[1]][1] - mean(alpha_l_boot_outer_orig, na.rm = T)
     Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = T)
     
-    # Percentile CI
-    CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # # Percentile CI
+    # CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # 
+    # CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
     
-    CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
+    # Basic bootstrap confidence interval
+    CI_perc_upper_alpha_u_trt_corr1 <- 2* Orig_corr_u - quantile(alpha_u_boot_outer_corr, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_corr1 <- 2* Orig_corr_l - quantile(alpha_l_boot_outer_corr, 0.975, na.rm = T)
+    
+    CI_perc_upper_alpha_u_trt_orig1 <- 2* Orig[[1]][2] - quantile(alpha_u_boot_outer_orig, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_orig1 <- 2* Orig[[1]][1] - quantile(alpha_l_boot_outer_orig, 0.975, na.rm = T)
+    
     
     # Wald CI
     CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = T) # extra
@@ -729,8 +778,14 @@ library(monotone) # unimonotone
     CI_perc_low_alpha_l_trt_orig2 <- Orig[[1]][1]  - qnorm(0.975) * sd(alpha_l_boot_outer_orig, na.rm = T) # extra
     CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2]  + qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = T) # extra
     
-    c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
+    # Basic bootstrap CI
+    # c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
     c(CI_perc_low_alpha_l_trt_corr1, CI_perc_upper_alpha_u_trt_corr1)
+    
+    # Wald CI
+    # c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
+    c(CI_perc_low_alpha_l_trt_corr2, CI_perc_upper_alpha_u_trt_corr2)
+    
     
     max(NA_count_u_i)
     max(NA_count_l_i)
@@ -746,7 +801,7 @@ library(monotone) # unimonotone
     # Orig <- readRDS("orig_trt_logit_weight1.RData")
     # temp <-  readRDS("double_400_50/double_trt_logit_weight1_adaptive.RData")
     # # temp <-  readRDS("double_400_50/double_trt_logit_weight1_grid.RData")
-    
+    # 
     Orig <- readRDS("orig_trt_logit_weight2.RData")
     temp <-  readRDS("double_400_50/double_trt_logit_weight2_adaptive.RData")
     # temp <-  readRDS("double_400_50/double_trt_logit_weight2_grid.RData")
@@ -776,12 +831,20 @@ library(monotone) # unimonotone
     Orig_corr_l <- 2 * Orig[[1]][1] - mean(alpha_l_boot_outer_orig, na.rm = T)
     Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = T)
     
-    # Percentile CI
-    CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # # Percentile CI
+    # CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # 
+    # CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
     
-    CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
+    # Basic bootstrap confidence interval
+    CI_perc_upper_alpha_u_trt_corr1 <- 2* Orig_corr_u - quantile(alpha_u_boot_outer_corr, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_corr1 <- 2* Orig_corr_l - quantile(alpha_l_boot_outer_corr, 0.975, na.rm = T)
+    
+    CI_perc_upper_alpha_u_trt_orig1 <- 2* Orig[[1]][2] - quantile(alpha_u_boot_outer_orig, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_orig1 <- 2* Orig[[1]][1] - quantile(alpha_l_boot_outer_orig, 0.975, na.rm = T)
+    
     
     # Wald CI
     CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = T) # extra
@@ -791,11 +854,11 @@ library(monotone) # unimonotone
     CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2]  + qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = T) # extra
     
     # percentile CI
-    c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
+    # c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
     c(CI_perc_low_alpha_l_trt_corr1, CI_perc_upper_alpha_u_trt_corr1)
     
     # Wald CI
-    c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
+    # c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
     c(CI_perc_low_alpha_l_trt_corr2, CI_perc_upper_alpha_u_trt_corr2)
     
     
@@ -895,12 +958,21 @@ library(monotone) # unimonotone
     Orig_corr_l <- 2 * Orig[[1]][1] - mean(alpha_l_boot_outer_orig, na.rm = T)
     Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = T)
     
-    # Percentile CI
-    CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # # Percentile CI
+    # CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
+    # 
+    # CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
+    # CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
     
-    CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
+    # Basic bootstrap confidence interval
+    CI_perc_upper_alpha_u_trt_corr1 <- 2* Orig_corr_u - quantile(alpha_u_boot_outer_corr, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_corr1 <- 2* Orig_corr_l - quantile(alpha_l_boot_outer_corr, 0.975, na.rm = T)
+    
+    CI_perc_upper_alpha_u_trt_orig1 <- 2* Orig[[1]][2] - quantile(alpha_u_boot_outer_orig, 0.025, na.rm = T)
+    CI_perc_low_alpha_l_trt_orig1 <- 2* Orig[[1]][1] - quantile(alpha_l_boot_outer_orig, 0.975, na.rm = T)
+    
+    
     
     # Wald CI
     CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = T) # extra
@@ -910,67 +982,18 @@ library(monotone) # unimonotone
     CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2]  + qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = T) # extra
     
     # percentile CI
-    c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
+    # c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
     c(CI_perc_low_alpha_l_trt_corr1, CI_perc_upper_alpha_u_trt_corr1)
     
     # Wald CI
-    c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
+    # c(CI_perc_low_alpha_l_trt_orig2, CI_perc_upper_alpha_u_trt_orig2)
     c(CI_perc_low_alpha_l_trt_corr2, CI_perc_upper_alpha_u_trt_corr2)
     
     max(NA_count_u_i)
     max(NA_count_l_i)
     
     
-    
-    # crl
-    Orig <- readRDS("orig_crl_logit_weight2.RData")
-    temp <-  readRDS("double_400_50/double_crl_logit_weight2_adaptive.RData")
-    # temp <-  readRDS("double_400_50/double_crl_logit_weight2_grid.RData")
-    
-    alpha_u_boot_outer_orig <- rep(NA, B_outer)
-    alpha_l_boot_outer_orig <- rep(NA, B_outer)
-    alpha_u_boot_outer_corr <- rep(NA, B_outer)
-    alpha_l_boot_outer_corr <- rep(NA, B_outer)
-    NA_count_u_i <-  rep(NA, B_outer)
-    NA_count_l_i <-  rep(NA, B_outer)
-    Type <-  rep(NA, B_outer)
-    
-    for(j in 1:B_outer){
-      
-      alpha_l_boot_outer_orig[j] <- temp[[j]][[1]][1]
-      alpha_u_boot_outer_orig[j] <- temp[[j]][[1]][2]
-      alpha_l_boot_outer_corr[j] <- 2 * alpha_l_boot_outer_orig[j] - mean(temp[[j]][[2]], na.rm = T)
-      alpha_u_boot_outer_corr[j] <- 2 * alpha_u_boot_outer_orig[j] - mean(temp[[j]][[3]], na.rm = T)
-      
-      NA_count_u_i[j] <- temp[[j]][[4]][1]
-      NA_count_l_i[j] <- temp[[j]][[4]][2]
-      
-      Type[j] <- temp[[j]][[5]]
-    }
-    
-    Orig_corr_l <- 2 * Orig[[1]][1] - mean(alpha_l_boot_outer_orig, na.rm = T)
-    Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = T)
-    
-    # Percentile CI
-    CI_perc_upper_alpha_u_trt_corr1 <- quantile(alpha_u_boot_outer_corr, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_corr1 <- quantile(alpha_l_boot_outer_corr, 0.025, na.rm = T)
-    
-    CI_perc_upper_alpha_u_trt_orig1 <- quantile(alpha_u_boot_outer_orig, 0.975, na.rm = T)
-    CI_perc_low_alpha_l_trt_orig1 <- quantile(alpha_l_boot_outer_orig, 0.025, na.rm = T) 
-    
-    # Wald CI
-    CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = T) # extra
-    CI_perc_upper_alpha_u_trt_corr2 <- Orig_corr_u + qnorm(0.975) * sd(alpha_u_boot_outer_corr, na.rm = T) # extra
-    
-    CI_perc_low_alpha_l_trt_orig2 <- Orig[[1]][1]  - qnorm(0.975) * sd(alpha_l_boot_outer_orig, na.rm = T) # extra
-    CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2]  + qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = T) # extra
-    
-    c(CI_perc_low_alpha_l_trt_orig1, CI_perc_upper_alpha_u_trt_orig1)
-    c(CI_perc_low_alpha_l_trt_corr1, CI_perc_upper_alpha_u_trt_corr1)
-    
-    max(NA_count_u_i)
-    max(NA_count_l_i)
-    
+
     
   }
   

@@ -4,17 +4,6 @@ library(dplyr)
 
 setwd("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm")
 
-
-# ######## Load the original simulated data ########
-# {
-#   
-#   ARC_data <- readRDS("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/ARC_data.rds")
-#   
-#   orig_simu_trt <- filter(ARC_data, Trt == "home_visits")
-#   orig_simu_crl <- filter(ARC_data, Trt == "control")
-# 
-# }
-
 Alpha_seq = c(-0.8, -0.4, 0, 0.4, 0.8, 1.2)
 spline_seq <- seq(60, 460, by = 1)
 range_value <- c(0.2, 0.5)

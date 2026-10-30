@@ -3,58 +3,13 @@
 rm(list=ls())
 library(dplyr)
 
+source("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm/1. function_selection.R")
 setwd("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm")
 
 Alpha_seq = seq(-0.8, 1.2, by = 0.02)
 A <- length(Alpha_seq)
 spline_seq = seq(60, 460, by = 1)
 range_value = c(0.2, 0.5)
-
-
-# calculate bootstrap t confidence interval or JN confidence interval
-wald <- function(mean_orig, var_orig, Zstar = qnorm(0.975)){
-  CI_left <- mean_orig - Zstar *sqrt(var_orig)
-  CI_right <- mean_orig + Zstar *sqrt(var_orig)
-  
-  return(c(CI_left, CI_right))
-}
-Wald_CI_paraboot <- function(alpha_trt,
-                             alpha_crl, 
-                             month){
-  
-  Month <- c(3, 6, 9, 12)
-  Alpha_seq <-  seq(-0.8, 1.2, by = 0.02)
-  index_month <- which(Month == month) + 1
-  
-  index_trt <- which(Alpha_seq == alpha_trt)
-  index_crl <- which(Alpha_seq == alpha_crl)
-
-  boot_size <- length(data_trt)
-  
-  Est_paraboot_control <- rep(NA, boot_size)
-  Est_paraboot_treat <- rep(NA, boot_size)
-  Est_paraboot_effect_EY <- rep(NA, boot_size)
-  
-  orig_trt <- SIM_treat[index_trt, index_month]
-  orig_crl <- SIM_control[index_crl, index_month]
-  effect <- orig_trt - orig_crl
-  
-  for(j in 1:boot_size){
-    
-    Est_paraboot_treat[j] <- data_trt[[j]][[1]][index_trt, index_month]
-    Est_paraboot_control[j] <- data_crl[[j]][[1]][index_crl, index_month]
-    Est_paraboot_effect_EY[j] <- Est_paraboot_treat[j] - Est_paraboot_control[j]
-   
-  }
-  
-  temp4_EY <- wald(effect, var(Est_paraboot_effect_EY))
-  paraboot_l_EY_se  <- temp4_EY[1]
-  paraboot_r_EY_se  <- temp4_EY[2]
-
-  return(c(effect, paraboot_l_EY_se, paraboot_r_EY_se))
-  
-}
-
 
 
 ## logit, weight1 
@@ -74,7 +29,6 @@ Wald_CI_paraboot <- function(alpha_trt,
   ##############   contour plot for SIM - Month 6 - data processing ############## 
   {
     
-    
     Estimate_vec <- rep(NA, A^2)
     Lower_ci <- rep(NA, A^2)
     Upper_ci <- rep(NA, A^2)
@@ -84,7 +38,7 @@ Wald_CI_paraboot <- function(alpha_trt,
     for(a in 1:A){
       for(b in 1:A){
         
-        res <- Wald_CI_paraboot(alpha_trt =  Alpha_seq[a],
+        res <- Wald_CI_effect(alpha_trt =  Alpha_seq[a],
                                alpha_crl =  Alpha_seq[b],
                                month = 6)
         
@@ -128,7 +82,7 @@ Wald_CI_paraboot <- function(alpha_trt,
     for(a in 1:A){
       for(b in 1:A){
         
-        res <- Wald_CI_paraboot(alpha_trt =  Alpha_seq[a],
+        res <- Wald_CI_effect(alpha_trt =  Alpha_seq[a],
                                 alpha_crl =  Alpha_seq[b],
                                 month = 12)
         
@@ -190,7 +144,7 @@ Wald_CI_paraboot <- function(alpha_trt,
     for(a in 1:A){
       for(b in 1:A){
         
-        res <- Wald_CI_paraboot(alpha_trt =  Alpha_seq[a],
+        res <- Wald_CI_effect(alpha_trt =  Alpha_seq[a],
                                 alpha_crl =  Alpha_seq[b],
                                 month = 6)
         
@@ -234,7 +188,7 @@ Wald_CI_paraboot <- function(alpha_trt,
     for(a in 1:A){
       for(b in 1:A){
         
-        res <- Wald_CI_paraboot(alpha_trt =  Alpha_seq[a],
+        res <- Wald_CI_effect(alpha_trt =  Alpha_seq[a],
                                 alpha_crl =  Alpha_seq[b],
                                 month = 12)
         
