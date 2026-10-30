@@ -2806,8 +2806,8 @@ Wald_CI_effect <- function(alpha_trt,
   }
   
   temp4_EY <- Wald_CI(effect, var(Est_paraboot_effect_EY))
-  paraboot_l_EY_se  <- temp4_EY[1]
-  paraboot_r_EY_se  <- temp4_EY[2]
+  paraboot_l_EY_se  <- temp4_EY[2]
+  paraboot_r_EY_se  <- temp4_EY[3]
   
   return(c(effect, paraboot_l_EY_se, paraboot_r_EY_se))
   
