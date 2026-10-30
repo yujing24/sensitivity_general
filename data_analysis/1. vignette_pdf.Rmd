@@ -54,7 +54,7 @@ The mean outcome is modeled as $\mu(t) = s\{B(t)'\beta\}$ for $t \in [t_1, t_2]$
 
 Two observed-data models are fitted within each arm:
 
--   the assessment intensity $\lambda\{t \mid \overline{O}(t)\}$, using an Andersen–Gill model stratified by assessment number; and
+-   the assessment intensity $\lambda\{t \mid \overline{O}(t)\}$, using an Andersen--Gill model stratified by assessment number; and
 -   the conditional distribution of observed outcomes, using a single-index model with predictors `Prev_outcome`, `time`, and `Lag_time`.
 
 To choose plausible values of $\alpha_a$, clinical experts give a plausible range $(\mu_a^l, \mu_a^u)$ for the mean outcome. Based on the monotonicity of $\mu^a(t;\alpha_a)$ in $\alpha_a$, the set of values for which $\mu_a^l < \mu^a(t;\alpha_a) < \mu_a^u$ for all $t \in [t_1, t_2]$ is an interval $(\alpha_a^l, \alpha_a^u)$, which we estimate from the data.
@@ -63,7 +63,7 @@ To choose plausible values of $\alpha_a$, clinical experts give a plausible rang
 
 ## Working directory
 
-The working directory is set to the folder that contains this R Markdown file, so the function files (1. function_inference.R and 1. function_selection.R) and the simulated data sets should be placed in the same folder. When knitting, setwd() only affects the chunk it is called in, so we also set root.dir, which makes all later chunks run in this folder.
+The working directory is set to the folder that contains this R Markdown file, so the function files (`1. function_inference.R` and `1. function_selection.R`) and the simulated data sets should be placed in the same folder. When knitting, `setwd()` only affects the chunk it is called in, so we also set `root.dir`, which makes all later chunks run in this folder.
 
 ```{r path}
 if (isTRUE(getOption("knitr.in.progress"))) {
@@ -80,12 +80,11 @@ if (isTRUE(getOption("knitr.in.progress"))) {
 
 setwd(path)
 knitr::opts_knit$set(root.dir = path)
-getwd()
 ```
 
 ## Packages and functions
 
-All functions for estimation and inference are stored in `1. function_inference.R`. All functions for sensitivity parameter selection are stored in `1. function_selection.R`. The single-index model is fitted with functions from the `SensIAT` package.
+All functions for estimation and inference are stored in `1. function_inference.R`. All functions for sensitivity parameter selection are stored in `1. function_selection.R`. The single-index model is fitted with functions from the SensIAT package (version 0.3.0 or later, available on CRAN).
 
 ```{r packages}
 library(dplyr)
@@ -152,7 +151,7 @@ The data are in long format, with one row per assessment and one additional row 
 
 Throughout this section, we use the **log link** for the ACQ score and the first weight function $W_1(t;\beta)$ as an example. For other link functions or weight functions, change the `link_type` and `IF_type` arguments in each function.
 
-Based on the selected range of the sensitivity parameter (see the last part of this vignette), we consider $\alpha \in \{-1.2, -0.8, -0.4, 0, 0.4, 0.8\}$ for the ACQ score.
+We consider $\alpha \in \{-1.2, -0.8, -0.4, 0, 0.4, 0.8\}$ for the ACQ score. These values lie within the bias-corrected 95% confidence set for $(\alpha_a^l, \alpha_a^u)$ obtained in the last part of this vignette. Some of them, such as $\alpha = 0.8$, lie outside the estimated range itself, so the corresponding mean curves may fall partly outside the plausible range $(1.2, 3.0)$.
 
 ```{r alpha-seq}
 Alpha_seq <- c(-1.2, -0.8, -0.4, 0, 0.4, 0.8)
@@ -506,7 +505,7 @@ SIM_p1
 
 ### Contour plot of the confidence intervals
 
-The next two plots summarize statistical significance at 6 and 12 months, respectively. For each $(\alpha_0, \alpha_1)$, we record the confidence limit closest to 0 when the interval excludes 0, and 0 otherwise:
+The next two plots summarize evidence of a treatment effect at 6 and 12 months, respectively. For each $(\alpha_0, \alpha_1)$, we record the confidence limit closest to 0 when the interval excludes 0, and 0 otherwise:
 
 -   `CI_info` = lower bound, if the lower bound $> 0$ (the PT+HV arm has a higher mean ACQ score);
 -   `CI_info` = upper bound, if the upper bound $< 0$ (the PT+HV arm has a lower mean ACQ score, i.e., better asthma control);
@@ -523,7 +522,7 @@ ci_info <- function(df) {
 plot_ci_contour <- function(df, title) {
   df2 <- mutate(df, CI_info = ci_info(df))
   ggplot(df2, aes(x = Alpha_crl, y = Alpha_trt, z = CI_info)) +
-    geom_contour_fill(breaks = seq(-2.6, 2.6, by = 0.4)) +
+    geom_contour_fill(breaks = c(seq(-2.6, -0.2, by = 0.4), -1e-8, 1e-8, seq(0.2, 2.6, by = 0.4))) +
     scale_fill_divergent(mid = "white", low = "forestgreen",
                          high = "orange", midpoint = 0) +
     theme_bw() +
@@ -552,11 +551,11 @@ SIM_p2_m6
 SIM_p2_m12
 ```
 
-If the range of `CI_info` printed above falls outside $[-2.6, 2.6]$, widen the `breaks` in `geom_contour_fill()`.
+If the range of `CI_info` printed above falls outside $[-2.6, 2.6]$, extend the `breaks` in `geom_contour_fill()`. The two breaks at $\pm 10^{-8}$ ensure that only the region where the confidence interval contains 0 is shown in white.
 
 # Selection of the sensitivity parameter
 
-We now estimate the range $(\alpha_a^l, \alpha_a^u)$ of sensitivity parameter values under which the mean ACQ score stays within the plausible range $(\mu_a^l, \mu_a^u) = (1.2, 3.0)$ for all $t \in [60, 460]$. We use the initial search grid $\mathcal{A}_M = \{-3, -2.99, \ldots, 3\}$. The time grid $\mathcal{T}_K$ is handled internally by Gauss–Legendre quadrature nodes on $[60, 460]$. We illustrate the procedure for the treatment arm with the log link and weight function $W_1(t;\beta)$. The control arm is handled in the same way.
+We now estimate the range $(\alpha_a^l, \alpha_a^u)$ of sensitivity parameter values under which the mean ACQ score stays within the plausible range $(\mu_a^l, \mu_a^u) = (1.2, 3.0)$ for all $t \in [60, 460]$. We use the initial search grid $\mathcal{A}_M = \{-3, -2.99, \ldots, 3\}$. The time grid $\mathcal{T}_K$ is handled internally by Gauss--Legendre quadrature nodes on $[60, 460]$. We illustrate the procedure for the treatment arm with the log link and weight function $W_1(t;\beta)$. The control arm is handled in the same way.
 
 ## Point estimates and bias-corrected point estimates
 
@@ -646,7 +645,7 @@ table(Type)
 
 ### Algorithm 3: double bootstrap
 
-`f_double_boot_onestep_adaptive()` implements one outer replicate of Algorithm 3, including `L` inner replicates. We use $B_1 = 400$ outer and $B_2 = 50$ inner replicates. This is the most time-consuming step. Because the result is loaded from the cache here, the reported running time is close to zero; it reflects the actual computation time only on the first run, when no saved result exists.
+`f_double_boot_onestep_adaptive()` implements one outer replicate of Algorithm 3, including `L` inner replicates. We use $B_1 = 400$ outer and $B_2 = 50$ inner replicates. This is the most time-consuming step. 
 
 ```{r alg3}
 orig_input <- orig_trt_log_weight1
@@ -658,8 +657,6 @@ search_method <- "adaptive"
 set.seed(567)
 Boot_seed_all <- sample(500000000, size = Boot_outer, replace = TRUE)
 
-# the running time is meaningful only on the first run (no saved result)
-start <- Sys.time()
 result_double <- run_or_load("alg3_double_trt",
   parallel::mclapply(Boot_seed_all,
                      f_double_boot_onestep_adaptive,
@@ -673,8 +670,6 @@ result_double <- run_or_load("alg3_double_trt",
                      L             = Boot_inner,   # inner bootstrap size
                      mc.cores      = n_cores)
 )
-end <- Sys.time()
-end - start
 ```
 
 Each outer replicate $b_1$ returns a list with five elements:
@@ -685,7 +680,7 @@ Each outer replicate $b_1$ returns a list with five elements:
 4.  the number of inner replicates with `NA`, for the lower and the upper bound;
 5.  the search method that was actually used.
 
-We then follow Steps 2–4 of Algorithm 3:
+We then follow Steps 2--4 of Algorithm 3:
 
 -   Bias-corrected outer estimates: $\widehat\alpha_a^{l,b_1,corr} = 2\widehat\alpha_a^{l,b_1} - B_2^{-1}\sum_{b_2}\widehat\alpha_a^{l,b_1,b_2}$, and similarly for the upper bound.
 -   Bias-corrected point estimates: $\widehat\alpha_a^{l,corr} = 2\widehat\alpha_a^{l} - B_1^{-1}\sum_{b_1}\widehat\alpha_a^{l,b_1}$, and similarly for the upper bound.
@@ -787,7 +782,7 @@ max(NA_count_u_i)
 table(Type)
 ```
 
-The selected range, together with clinical input, can then be used to choose the values of $\alpha_a$ reported in the main analysis (for example, $\alpha_a \in \{-1.2, -0.8, -0.4, 0, 0.4, 0.8\}$ for the ACQ score).
+The estimated range and its confidence set, together with clinical input, can then be used to choose the values of $\alpha_a$ reported in the main analysis. For example, the values $\alpha_a \in \{-1.2, -0.8, -0.4, 0, 0.4, 0.8\}$ used for the ACQ score lie within the bias-corrected 95% confidence set.
 
 # Other outcome types and options
 
@@ -822,25 +817,27 @@ Three points to note when changing the outcome type:
 
 -   When calling `paraboot_var()`, pass `Alpha_seq = Alpha_seq_binary` and `link = "logit"` for the binary outcome.
 -   For the logit link, use `qlogis()` instead of `log()` to compute `refer_mean`, and `plogis()` instead of `exp()` to transform the point estimate and the confidence interval back to the probability scale.
--   Set `range = c(0.2, 0.5)` in all three sensitivity parameter selection functions (`fun_est_IF_onestep_analysis()`, `f_onestep_bias_adaptive()`, and `f_double_boot_onestep_adaptive()`), together with `link_type = "logit"`.
+-   -   Set `range = c(0.2, 0.5)` and `link_type = "logit"` in all three sensitivity parameter selection functions:
+    -   `fun_est_IF_onestep_analysis()`,
+    -   `f_onestep_bias_adaptive()`, and
+    -   `f_double_boot_onestep_adaptive()`.
 
 ## Summary of main options
 
-| Argument | Values | Description |
+| Argument          | Values                                        | Description                                                                  |
 |------------------------|------------------------|------------------------|
-| `link_type` | `"log"`, `"logit"`, `"identity"` | Link function $g$ in the marginal mean model $\mu(t) = g^{-1}\{B(t)'\beta\}$ |
-| `IF_type` | `"weight1"`, `"weight2"` | Weight function $W_1(t;\beta)$ or $W_2(t;\beta)$ in the influence function |
-| `SIM_model` | `"norm1coef"`, `"fixed_coef"`, `"fixed_band"` | Fitting method for the single-index outcome model |
-| `Alpha_seq` | numeric vector | Values of the sensitivity parameter |
-| `spline_seq_orig` | numeric vector | Times (days) at which $\mu(t)$ is reported by `f_data_analysis_line()` |
-| `range` | `c(1.2, 3)`, `c(0.2, 0.5)`, ... | Plausible range $(\mu_a^l, \mu_a^u)$ of the mean outcome |
-| `weight_type` | `"rademacher"`, `"normal"`, `"exp"` | Distribution of the multiplier weights |
-| `search_method` | `"adaptive"`, `"binary"`, `"grid"` | Search strategy over $\mathcal{A}_M$ in Algorithms 2 and 3 |
-| `L` | integer | Number of inner bootstrap replicates in Algorithm 3 |
+| `link_type`       | `"log"`, `"logit"`, `"identity"`              | Link function $g$ in the marginal mean model $\mu(t) = g^{-1}\{B(t)'\beta\}$ |
+| `IF_type`         | `"weight1"`, `"weight2"`                      | Weight function $W_1(t;\beta)$ or $W_2(t;\beta)$ in the influence function   |
+| `SIM_model`       | `"norm1coef"`, `"fixed_coef"`, `"fixed_band"` | Fitting method for the single-index outcome model                            |
+| `Alpha_seq`       | numeric vector                                | Values of the sensitivity parameter                                          |
+| `spline_seq_orig` | numeric vector                                | Times (days) at which $\mu(t)$ is reported by `f_data_analysis_line()`       |
+| `range`           | `c(1.2, 3)`, `c(0.2, 0.5)`, ...               | Plausible range $(\mu_a^l, \mu_a^u)$ of the mean outcome                     |
+| `weight_type`     | `"rademacher"`, `"normal"`, `"exp"`           | Distribution of the multiplier weights                                       |
+| `search_method`   | `"adaptive"`, `"binary"`, `"grid"`            | Search strategy over $\mathcal{A}_M$ in Algorithms 2 and 3                   |
+| `L`               | integer                                       | Number of inner bootstrap replicates in Algorithm 3                          |
 
 # Session information
 
 ```{r session-info}
 sessionInfo()
 ```
-
