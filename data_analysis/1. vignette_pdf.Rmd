@@ -1,6 +1,6 @@
 ---
 title: "Sensitivity Analysis for Irregular Assessment Times with General Outcome Types"
-subtitle: "A worked example using simulated ARC trial data"
+subtitle: "An example using simulated ARC trial data"
 output:
   pdf_document:
     toc: true
@@ -36,7 +36,7 @@ options(width = 80)   # keep printed output within the page margins
 
 # Overview
 
-This vignette shows how to use our code to carry out the sensitivity analysis proposed in the paper for randomized trials in which the outcome is assessed at **irregular times** and assessment may depend on the outcome itself. The code supports general outcome types through a link function (identity, log, or logit).
+This vignette shows how to use our code to carry out the sensitivity analysis proposed in the paper, for randomized trials in which the outcome is assessed at **irregular times** and assessment may depend on the outcome itself. The code supports general outcome types through a link function (identity, log, or logit).
 
 We use a simulated data set generated from the Asthma Research for the Community (ARC) trial, following the simulation design in the paper. The vignette covers:
 
@@ -63,14 +63,23 @@ To choose plausible values of $\alpha_a$, clinical experts give a plausible rang
 
 ## Working directory
 
-Set `path` to the folder that contains the function files (`1. function_inference.R` and `1. function_selection.R`) and the simulated data sets. If `path = ""`, the current working directory is used. When knitting, `setwd()` only affects the chunk it is called in, so we also set `root.dir`, which makes all later chunks run in `path`.
+The working directory is set to the folder that contains this R Markdown file, so the function files (1. function_inference.R and 1. function_selection.R) and the simulated data sets should be placed in the same folder. When knitting, setwd() only affects the chunk it is called in, so we also set root.dir, which makes all later chunks run in this folder.
 
 ```{r path}
-path <- "/Users/jane.gao/Downloads/data_analysis_norm"
-if (nzchar(path)) {
-  setwd(path)
-  knitr::opts_knit$set(root.dir = path)
+if (isTRUE(getOption("knitr.in.progress"))) {
+  # when knitting
+  path <- dirname(knitr::current_input(dir = TRUE))
+} else if (requireNamespace("rstudioapi", quietly = TRUE) &&
+           rstudioapi::isAvailable()) {
+  # when running chunks interactively in RStudio
+  path <- dirname(rstudioapi::getSourceEditorContext()$path)
+} else {
+  # otherwise, use the current working directory
+  path <- getwd()
 }
+
+setwd(path)
+knitr::opts_knit$set(root.dir = path)
 getwd()
 ```
 
@@ -92,9 +101,9 @@ library(metR)      # contour plots
 library(isoband)
 library(SensIAT)   # single-index model
 
-# all functions for data analysis are stored in "1. function_inference.R"
+# functions for estimation and inference
 source("1. function_inference.R")
-# all functions for sensitivity parameter selection are stored in "1. function_selection.R"
+# functions for sensitivity parameter selection
 source("1. function_selection.R")
 ```
 
@@ -105,14 +114,14 @@ Several steps (parametric bootstrap, multiplier bootstrap, and especially the do
 To avoid re-running these steps every time the vignette is knitted, we use a small helper that saves each time-consuming result to the `cache` folder and loads it on later runs. Delete the corresponding `.rds` file to re-run a step. The helper also hides the progress messages printed by the estimation functions, so that they do not appear in the PDF.
 
 ```{r helper-cache}
-n_cores   <- 96         # e.g., 64 or 96 on a computing cluster; use 1 on Windows
+n_cores   <- 96   # e.g., 64 or 96 on a cluster; use 1 on Windows
 cache_dir <- "cache"
 dir.create(cache_dir, showWarnings = FALSE, recursive = TRUE)
 
 run_or_load <- function(name, expr) {
   file <- file.path(cache_dir, paste0(name, ".rds"))
   if (file.exists(file)) return(readRDS(file))
-  # evaluated only when no saved result exists; progress messages are hidden
+  # run only if no saved result exists; progress messages are hidden
   invisible(utils::capture.output(result <- expr))
   saveRDS(result, file)
   result
@@ -124,7 +133,7 @@ run_or_load <- function(name, expr) {
 The simulated data set is based on the ARC trial and is generated using the simulation method described in the paper. Each arm is stored as a separate data set:
 
 -   `ARC_simu_data_200_neg_trt` and `ARC_simu_data_200_neg_crl`: the original ACQ score for the intervention (PT+HV) arm and the control (PT) arm. The ACQ score ranges from 0 to 6, and either the log link or the identity link can be applied.
--   `ARC_simu_data_200_logistic_trt` and `ARC_simu_data_200_logistic_crl`: the binary asthma control (AC) indicator, which should be analyzed with the logit link (see [Other outcome types and options]).
+-   `ARC_simu_data_200_logistic_trt` and `ARC_simu_data_200_logistic_crl`: the binary asthma control (AC) indicator, which should be analyzed with the logit link.
 
 ```{r data}
 data_ARC_trt_continuous <- readRDS(file = "ARC_simu_data_200_neg_trt")
@@ -137,13 +146,13 @@ data_ARC_crl_continuous <- readRDS(file = "ARC_simu_data_200_neg_crl")
 head(data_ARC_trt_continuous)
 ```
 
-The data are in long format, with one row per assessment. The main variables are the participant identifier `id`, the assessment time `time` (days since randomization), the assessment number `visit`, the outcome `outcome`, the outcome at the previous assessment `Prev_outcome`, and the time since the previous assessment `Lag_time`. Follow-up ends at day 830.
+The data are in long format, with one row per assessment and one additional row at the end of follow-up (day 830) for each participant, where `event = 0` and `outcome = NA`. The variables are the participant identifier `id`, the assessment time `time` (days since randomization), the assessment indicator `event`, the outcome at the previous assessment `Prev_outcome`, the time of the previous assessment `prev_time`, the time since the previous assessment `Lag_time`, the assessment number `visit`, and the outcome `outcome`.
 
 # Estimation of the mean outcome
 
 Throughout this section, we use the **log link** for the ACQ score and the first weight function $W_1(t;\beta)$ as an example. For other link functions or weight functions, change the `link_type` and `IF_type` arguments in each function.
 
-Based on the selected range of the sensitivity parameter (Section [Selection of the sensitivity parameter]), we consider $\alpha \in \{-1.2, -0.8, -0.4, 0, 0.4, 0.8\}$ for the ACQ score.
+Based on the selected range of the sensitivity parameter (see the last part of this vignette), we consider $\alpha \in \{-1.2, -0.8, -0.4, 0, 0.4, 0.8\}$ for the ACQ score.
 
 ```{r alpha-seq}
 Alpha_seq <- c(-1.2, -0.8, -0.4, 0, 0.4, 0.8)
@@ -155,11 +164,11 @@ Alpha_seq <- c(-1.2, -0.8, -0.4, 0, 0.4, 0.8)
 
 ```{r point-est}
 result_trt_log_weight1 <- run_or_load("result_trt_log_weight1",
-  f_data_analysis_point(data       = data_ARC_trt_continuous,
-                        link_type  = "log",        # "log", "logit", "identity"
-                        Alpha_seq  = Alpha_seq,    # All alpha values for analysis 
-                        IF_type    = "weight1",    # "weight1" or "weight2"
-                        SIM_model  = "norm1coef")
+  f_data_analysis_point(data      = data_ARC_trt_continuous,
+                        link_type = "log",       # "log", "logit", "identity"
+                        Alpha_seq = Alpha_seq,   # values of alpha
+                        IF_type   = "weight1",   # "weight1" or "weight2"
+                        SIM_model = "norm1coef")
 )
 ```
 
@@ -189,7 +198,7 @@ head(IF_CI)
 
 ## Parametric bootstrap confidence intervals
 
-As an alternative to the influence-function-based variance, we can use the parametric bootstrap. We first generate $B = 200$ parametric bootstrap data sets with `inner_ARC_SIR_sim_data_count_paraboot()`, and then estimate $\mu(t)$ in each of them with `f_data_analysis_line()`. Here `spline_seq_orig = c(90, 180, 270, 360)` returns the estimates at 3, 6, 9, and 12 months.
+As an alternative to the influence-function-based variance, we can use the parametric bootstrap. We first generate $B = 200$ parametric bootstrap data sets with `inner_ARC_SIR_sim_data_count_paraboot()`, and then estimate $\mu(t)$ in each of them with `f_data_analysis_line()`. Here, setting `spline_seq_orig = c(90, 180, 270, 360)` returns the estimates at 3, 6, 9, and 12 months.
 
 ```{r paraboot-trt}
 set.seed(123)  # for the treatment group
@@ -223,18 +232,19 @@ result_trt <- run_or_load("paraboot_est_trt",
 )
 ```
 
-`paraboot_var()` computes the parametric bootstrap variance of $\log\widehat\mu(t)$ for a given $\alpha$ and month, and `Wald_CI()` returns the point estimate and the Wald confidence interval on the log scale. Taking `exp()` transforms them back to the original scale. For example, for month 3 and $\alpha = -1.2$:
+With `link = "log"`, `paraboot_var()` computes the parametric bootstrap variance of $\log\widehat\mu(t)$ for a given $\alpha$ and month. Given the point estimate and this variance on the log scale, `Wald_CI()` returns the point estimate and the 95% Wald confidence interval on the log scale, and `exp()` transforms them back to the original scale. For example, for month 3 and $\alpha = -1.2$:
 
 ```{r paraboot-ci-example}
 SIM_treat_03 <- result_trt_log_weight1[[1]][, 2]   # estimates at month 3
 month <- 3
 alpha <- -1.2
 
-refer_mean <- SIM_treat_03 |> log()
-var_paraboot  <- paraboot_var(data = result_trt, alpha, month, Alpha_seq = Alpha_seq, link = "log")
-mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
+refer_mean   <- SIM_treat_03 |> log()
+var_paraboot <- paraboot_var(data = result_trt, alpha, month,
+                             Alpha_seq = Alpha_seq, link = "log")
+mean_orig    <- refer_mean[which(Alpha_seq == alpha)]
 
-t_SIM_treat_03  <- Wald_CI(mean_orig, var_orig = var_paraboot) |> exp()
+t_SIM_treat_03 <- Wald_CI(mean_orig, var_orig = var_paraboot) |> exp()
 t_SIM_treat_03   # point estimate, lower bound, upper bound
 ```
 
@@ -258,14 +268,18 @@ df_trt <- run_or_load("line_est_trt",
 ```
 
 ```{r line-plot, fig.height = 6}
-plot_df_trt <- data.frame(Time  = rep(spline_seq, length(Alpha_seq)),
-                          Mean  = as.vector(t(df_trt[[1]][, -1])),
-                          Alpha = rep(as.character(Alpha_seq), each = length(spline_seq)))
+plot_df_trt <- data.frame(
+  Time  = rep(spline_seq, length(Alpha_seq)),
+  Mean  = as.vector(t(df_trt[[1]][, -1])),
+  Alpha = rep(as.character(Alpha_seq), each = length(spline_seq))
+)
 
-alpha_colours <- c("#253494", "#41b6c4", "#a1dab4", "#ffffb2", "#fd8d3c", "#bd0026")
+alpha_colours <- c("#253494", "#41b6c4", "#a1dab4",
+                   "#ffffb2", "#fd8d3c", "#bd0026")
 alpha_breaks  <- c("0.8", "0.4", "0", "-0.4", "-0.8", "-1.2")
 
-line_plot_trt <- ggplot(plot_df_trt, aes(x = Time, y = Mean, colour = Alpha)) +
+line_plot_trt <- ggplot(plot_df_trt,
+                        aes(x = Time, y = Mean, colour = Alpha)) +
   geom_line(linewidth = 1.5) +
   theme_bw() +
   expand_limits(x = c(30, 480), y = c(0, 5)) +
@@ -277,15 +291,14 @@ line_plot_trt <- ggplot(plot_df_trt, aes(x = Time, y = Mean, colour = Alpha)) +
         axis.text    = element_text(size = 18),
         legend.text  = element_text(size = 18)) +
   annotate("text", x = 400, y = 4.5, label = "PT+HV Arm", size = 6) +
-  geom_hline(yintercept = range_value[1], linetype = "dotted", linewidth = 2) +
-  geom_hline(yintercept = range_value[2], linetype = "dotted", linewidth = 2)
+  geom_hline(yintercept = range_value, linetype = "dotted", linewidth = 2)
 
 line_plot_trt
 ```
 
 ## Confidence intervals at the target times
 
-Next, we compute the parametric bootstrap Wald confidence intervals for all values of $\alpha$ at 3, 6, 9, and 12 months. The helper below repeats the calculation in Section [Parametric bootstrap confidence intervals] for each $\alpha$ at a given month. The points are slightly shifted horizontally so that the intervals do not overlap.
+Next, we compute the parametric bootstrap Wald confidence intervals for all values of $\alpha$ at 3, 6, 9, and 12 months. The helper below repeats the calculation above for each $\alpha$ at a given month. The points are slightly shifted horizontally so that the intervals do not overlap.
 
 ```{r ci-data}
 Orig_res_trt <- result_trt_log_weight1
@@ -295,8 +308,9 @@ centre_days  <- c(90, 180, 270, 360)
 ci_by_month <- function(month, paraboot_res, orig_res) {
   refer_mean <- orig_res[[1]][, which(months == month) + 1] |> log()
   out <- t(sapply(Alpha_seq, function(alpha) {
-    mean_orig <- refer_mean[which(Alpha_seq == alpha)] 
-    var_paraboot <- paraboot_var(data = paraboot_res, alpha, month, Alpha_seq = Alpha_seq, link = "log")
+    mean_orig    <- refer_mean[which(Alpha_seq == alpha)]
+    var_paraboot <- paraboot_var(data = paraboot_res, alpha, month,
+                                 Alpha_seq = Alpha_seq, link = "log")
     Wald_CI(mean_orig, var_orig = var_paraboot) |> exp()
   }))
   data.frame(Alpha    = as.character(Alpha_seq),
@@ -313,7 +327,8 @@ plot_df_SIM_treat
 ```
 
 ```{r ci-plot, fig.height = 6}
-CI_plot_trt <- ggplot(plot_df_SIM_treat, aes(x = Time, y = Estimate, colour = Alpha)) +
+CI_plot_trt <- ggplot(plot_df_SIM_treat,
+                      aes(x = Time, y = Estimate, colour = Alpha)) +
   geom_point(size = 3) +
   geom_errorbar(aes(ymin = Lower_ci, ymax = Upper_ci), linewidth = 1) +
   theme_bw() +
@@ -326,8 +341,7 @@ CI_plot_trt <- ggplot(plot_df_SIM_treat, aes(x = Time, y = Estimate, colour = Al
         axis.text    = element_text(size = 18),
         legend.text  = element_text(size = 18)) +
   annotate("text", x = 400, y = 4.5, label = "PT+HV Arm", size = 6) +
-  geom_hline(yintercept = range_value[1], linetype = "dotted", linewidth = 2) +
-  geom_hline(yintercept = range_value[2], linetype = "dotted", linewidth = 2)
+  geom_hline(yintercept = range_value, linetype = "dotted", linewidth = 2)
 
 CI_plot_trt
 ```
@@ -420,33 +434,45 @@ result_crl_contour <- run_or_load("contour_paraboot_est_crl",
 
 ### Treatment effect estimates and confidence intervals
 
-For each pair $(\alpha_1, \alpha_0)$, `Wald_CI_paraboot()` returns the estimated treatment effect $\widehat\delta(t)$ and its 95% Wald confidence interval, where the variance is estimated from the parametric bootstrap estimates of $\widehat\mu^1(t) - \widehat\mu^0(t)$.
+For each pair $(\alpha_1, \alpha_0)$, `Wald_CI_effect()` returns the estimated treatment effect $\widehat\delta(t)$ and its 95% Wald confidence interval, where the variance is estimated from the parametric bootstrap estimates of $\widehat\mu^1(t) - \widehat\mu^0(t)$.
 
-Note that `Wald_CI_paraboot()` reads the objects `data_trt`, `data_crl`, `SIM_treat`, and `SIM_control` from the global environment, so they must be defined with exactly these names before it is called.
+Note that `Wald_CI_effect()` reads the objects `data_trt`, `data_crl`, `SIM_treat`, and `SIM_control` from the global environment, so they must be defined with exactly these names before it is called.
 
 ```{r contour-process}
-data_trt    <- result_trt_contour                   # parametric bootstrap, treatment
-data_crl    <- result_crl_contour                   # parametric bootstrap, control
-SIM_treat   <- result_trt_log_weight1_contour[[1]]  # original data, treatment
-SIM_control <- result_crl_log_weight1_contour[[1]]  # original data, control
+# parametric bootstrap estimates
+data_trt    <- result_trt_contour
+data_crl    <- result_crl_contour
+# estimates from the original data
+SIM_treat   <- result_trt_log_weight1_contour[[1]]
+SIM_control <- result_crl_log_weight1_contour[[1]]
 
 contour_df <- function(month) {
-  grid <- expand.grid(Alpha_crl = Alpha_seq_contour, Alpha_trt = Alpha_seq_contour)
+  grid <- expand.grid(Alpha_crl = Alpha_seq_contour,
+                      Alpha_trt = Alpha_seq_contour)
   res  <- t(mapply(function(a_trt, a_crl) {
-     Wald_CI_effect(alpha_trt = a_trt,
-                    alpha_crl = a_crl,
-                    month = month)
+    Wald_CI_effect(alpha_trt = a_trt,
+                   alpha_crl = a_crl,
+                   month     = month,
+                   Alpha_seq = Alpha_seq_contour)
   }, grid$Alpha_trt, grid$Alpha_crl))
+  # the last two columns are the lower and upper confidence limits
+  k <- ncol(res)
   data.frame(Alpha_trt    = grid$Alpha_trt,
              Alpha_crl    = grid$Alpha_crl,
              Estimate_vec = res[, 1],
-             Lower_ci     = res[, 2],
-             Upper_ci     = res[, 3])
+             Lower_ci     = res[, k - 1],
+             Upper_ci     = res[, k])
 }
 
 df_m6  <- contour_df(month = 6)
 df_m12 <- contour_df(month = 12)
 head(df_m6)
+
+# sanity check: lower limit <= estimate <= upper limit
+ci_ok <- function(df) {
+  with(df, all(Lower_ci <= Estimate_vec & Estimate_vec <= Upper_ci))
+}
+stopifnot(ci_ok(df_m6), ci_ok(df_m12))
 ```
 
 ### Contour plot of the point estimates
@@ -454,14 +480,16 @@ head(df_m6)
 The first plot shows the estimated treatment effect at 6 months for each combination of $\alpha_0$ (PT arm, $x$-axis) and $\alpha_1$ (PT+HV arm, $y$-axis). The dot at $(0, 0)$ corresponds to the explainable assessment assumption in both arms.
 
 ```{r contour-plot-est, fig.width = 8, fig.height = 7}
-SIM_p1 <- ggplot(df_m6, aes(x = Alpha_crl, y = Alpha_trt, z = Estimate_vec)) +
+SIM_p1 <- ggplot(df_m6,
+                 aes(x = Alpha_crl, y = Alpha_trt, z = Estimate_vec)) +
   geom_contour_fill(binwidth = 0.4, show.legend = FALSE) +
-  scale_fill_divergent(mid = "white", low = "forestgreen", high = "orange") +
+  scale_fill_divergent(mid = "white", low = "forestgreen",
+                       high = "orange") +
   geom_contour2(aes(z = Estimate_vec, label = after_stat(level)),
                 colour = "black", size = 0.5, binwidth = 0.4, skip = 0.4,
                 margin = grid::unit(c(5, 5, 5, 5), "pt"),
-                label.placer = label_placer_fraction(frac = 0.38,
-                                                     rot_adjuster = angle_fixed()),
+                label.placer = label_placer_fraction(
+                  frac = 0.38, rot_adjuster = angle_fixed()),
                 label_size = 7) +
   theme_bw() +
   labs(x = "Alpha for PT Arm", y = "Alpha for PT+HV Arm") +
@@ -478,7 +506,7 @@ SIM_p1
 
 ### Contour plot of the confidence intervals
 
-The second plot summarizes statistical significance. For each $(\alpha_0, \alpha_1)$, we record the confidence limit closest to 0 when the interval excludes 0, and 0 otherwise:
+The next two plots summarize statistical significance at 6 and 12 months, respectively. For each $(\alpha_0, \alpha_1)$, we record the confidence limit closest to 0 when the interval excludes 0, and 0 otherwise:
 
 -   `CI_info` = lower bound, if the lower bound $> 0$ (the PT+HV arm has a higher mean ACQ score);
 -   `CI_info` = upper bound, if the upper bound $< 0$ (the PT+HV arm has a lower mean ACQ score, i.e., better asthma control);
@@ -487,16 +515,22 @@ The second plot summarizes statistical significance. For each $(\alpha_0, \alpha
 White regions therefore indicate insufficient evidence of a treatment effect. Because a lower ACQ score indicates better asthma control, green regions favor the home visits intervention.
 
 ```{r contour-plot-ci, fig.width = 9, fig.height = 7}
-plot_ci_contour <- function(df) {
-  df2 <- mutate(df, CI_info = Lower_ci * (Lower_ci > 0) + Upper_ci * (Upper_ci < 0))
+# confidence limit closest to 0 if the CI excludes 0, and 0 otherwise
+ci_info <- function(df) {
+  with(df, Lower_ci * (Lower_ci > 0) + Upper_ci * (Upper_ci < 0))
+}
+
+plot_ci_contour <- function(df, title) {
+  df2 <- mutate(df, CI_info = ci_info(df))
   ggplot(df2, aes(x = Alpha_crl, y = Alpha_trt, z = CI_info)) +
     geom_contour_fill(breaks = seq(-2.6, 2.6, by = 0.4)) +
-    scale_fill_divergent(mid = "white", low = "forestgreen", high = "orange",
-                         midpoint = 0) +
+    scale_fill_divergent(mid = "white", low = "forestgreen",
+                         high = "orange", midpoint = 0) +
     theme_bw() +
     theme(legend.title = element_blank()) +
-    labs(x = "Alpha for PT Arm", y = "Alpha for PT+HV Arm") +
-    theme(axis.title      = element_text(size = 25),
+    labs(x = "Alpha for PT Arm", y = "Alpha for PT+HV Arm", title = title) +
+    theme(plot.title      = element_text(size = 25),
+          axis.title      = element_text(size = 25),
           axis.text       = element_text(size = 18),
           legend.text     = element_text(size = 14),
           legend.key.size = unit(1, "cm")) +
@@ -508,11 +542,11 @@ plot_ci_contour <- function(df) {
 }
 
 # check that the breaks cover the range of CI_info
-with(df_m6, range(Lower_ci * (Lower_ci > 0) + Upper_ci * (Upper_ci < 0)))
-with(df_m12, range(Lower_ci * (Lower_ci > 0) + Upper_ci * (Upper_ci < 0)))
+range(ci_info(df_m6))
+range(ci_info(df_m12))
 
-SIM_p2_m6  <- plot_ci_contour(df_m6)
-SIM_p2_m12 <- plot_ci_contour(df_m12)
+SIM_p2_m6  <- plot_ci_contour(df_m6,  title = "Month 6")
+SIM_p2_m12 <- plot_ci_contour(df_m12, title = "Month 12")
 
 SIM_p2_m6
 SIM_p2_m12
@@ -534,9 +568,9 @@ We now estimate the range $(\alpha_a^l, \alpha_a^u)$ of sensitivity parameter va
 orig_trt_log_weight1 <- run_or_load("alg1_orig_trt",
   fun_est_IF_onestep_analysis(df_sim    = data_ARC_trt_continuous,
                               Alpha_seq = seq(-3, 3, by = 0.01),
-                              range     = c(1.2, 3),     # c(1.2, 3) or c(0.2, 0.5)
-                              link_type = "log",         # "log", "logit", "identity"
-                              SIM_model = "norm1coef",   # "norm1coef", "fixed_coef", "fixed_band"
+                              range     = c(1.2, 3),
+                              link_type = "log",
+                              SIM_model = "norm1coef",
                               IF_type   = "weight1")
 )
 ```
@@ -560,9 +594,9 @@ result_bias <- run_or_load("alg2_bias_trt",
                      f_onestep_bias_adaptive,
                      orig_input    = orig_trt_log_weight1,
                      Alpha_seq     = seq(-3, 3, by = 0.01),
-                     weight_type   = "rademacher",   # "rademacher", "normal", "exp"
-                     link_type     = "log",          # "log", "logit", "identity"
-                     search_method = search_method,  # "binary", "grid", "adaptive"
+                     weight_type   = "rademacher",
+                     link_type     = "log",
+                     search_method = search_method,
                      range         = c(1.2, 3),
                      mc.cores      = n_cores)
 )
@@ -591,8 +625,10 @@ for (j in 1:Boot_num) {
   Type[j]       <- temp[[2]]
 }
 
-Alpha_l_trt_point_corr <- 2 * Alpha_l_trt_point_orig - mean(Boot_est_l, na.rm = TRUE)
-Alpha_u_trt_point_corr <- 2 * Alpha_u_trt_point_orig - mean(Boot_est_u, na.rm = TRUE)
+Alpha_l_trt_point_corr <- 2 * Alpha_l_trt_point_orig -
+  mean(Boot_est_l, na.rm = TRUE)
+Alpha_u_trt_point_corr <- 2 * Alpha_u_trt_point_orig -
+  mean(Boot_est_u, na.rm = TRUE)
 
 # original point estimates of (alpha_l, alpha_u)
 trt_log_weight1_orig <- c(Alpha_l_trt_point_orig, Alpha_u_trt_point_orig)
@@ -610,7 +646,7 @@ table(Type)
 
 ### Algorithm 3: double bootstrap
 
-`f_double_boot_onestep_adaptive()` implements one outer replicate of Algorithm 3, including `L` inner replicates. We use $B_1 = 400$ outer and $B_2 = 50$ inner replicates. This is the most time-consuming step.
+`f_double_boot_onestep_adaptive()` implements one outer replicate of Algorithm 3, including `L` inner replicates. We use $B_1 = 400$ outer and $B_2 = 50$ inner replicates. This is the most time-consuming step. Because the result is loaded from the cache here, the reported running time is close to zero; it reflects the actual computation time only on the first run, when no saved result exists.
 
 ```{r alg3}
 orig_input <- orig_trt_log_weight1
@@ -622,18 +658,19 @@ search_method <- "adaptive"
 set.seed(567)
 Boot_seed_all <- sample(500000000, size = Boot_outer, replace = TRUE)
 
-# the following process may take a long time
+# the running time is meaningful only on the first run (no saved result)
 start <- Sys.time()
 result_double <- run_or_load("alg3_double_trt",
   parallel::mclapply(Boot_seed_all,
                      f_double_boot_onestep_adaptive,
                      orig_input    = orig_input,
                      Alpha_seq     = seq(-3, 3, by = 0.01),
-                     weight_type   = "rademacher",   # "rademacher", "normal", "exp"
+                     range         = c(1.2, 3),
+                     weight_type   = "rademacher",
                      link_type     = "log",
                      IF_type       = "weight1",
-                     search_method = search_method,  # "adaptive" or "grid"
-                     L             = Boot_inner,     # inner bootstrap size
+                     search_method = search_method,
+                     L             = Boot_inner,   # inner bootstrap size
                      mc.cores      = n_cores)
 )
 end <- Sys.time()
@@ -673,8 +710,10 @@ Type         <- rep(NA, Boot_outer)
 for (j in 1:Boot_outer) {
   alpha_l_boot_outer_orig[j] <- temp[[j]][[1]][1]
   alpha_u_boot_outer_orig[j] <- temp[[j]][[1]][2]
-  alpha_l_boot_outer_corr[j] <- 2 * alpha_l_boot_outer_orig[j] - mean(temp[[j]][[2]], na.rm = TRUE)
-  alpha_u_boot_outer_corr[j] <- 2 * alpha_u_boot_outer_orig[j] - mean(temp[[j]][[3]], na.rm = TRUE)
+  alpha_l_boot_outer_corr[j] <- 2 * alpha_l_boot_outer_orig[j] -
+    mean(temp[[j]][[2]], na.rm = TRUE)
+  alpha_u_boot_outer_corr[j] <- 2 * alpha_u_boot_outer_orig[j] -
+    mean(temp[[j]][[3]], na.rm = TRUE)
 
   NA_count_l_i[j] <- temp[[j]][[4]][1]
   NA_count_u_i[j] <- temp[[j]][[4]][2]
@@ -687,27 +726,35 @@ Orig_corr_l <- 2 * Orig[[1]][1] - mean(alpha_l_boot_outer_orig, na.rm = TRUE)
 Orig_corr_u <- 2 * Orig[[1]][2] - mean(alpha_u_boot_outer_orig, na.rm = TRUE)
 
 # basic bootstrap confidence set: bias-corrected and original
-CI_perc_low_alpha_l_trt_corr1   <- 2 * Orig_corr_l - quantile(alpha_l_boot_outer_corr, 0.975, na.rm = TRUE)
-CI_perc_upper_alpha_u_trt_corr1 <- 2 * Orig_corr_u - quantile(alpha_u_boot_outer_corr, 0.025, na.rm = TRUE)
+CI_perc_low_alpha_l_trt_corr1 <- 2 * Orig_corr_l -
+  quantile(alpha_l_boot_outer_corr, 0.975, na.rm = TRUE)
+CI_perc_upper_alpha_u_trt_corr1 <- 2 * Orig_corr_u -
+  quantile(alpha_u_boot_outer_corr, 0.025, na.rm = TRUE)
 
-CI_perc_low_alpha_l_trt_orig1   <- 2 * Orig[[1]][1] - quantile(alpha_l_boot_outer_orig, 0.975, na.rm = TRUE)
-CI_perc_upper_alpha_u_trt_orig1 <- 2 * Orig[[1]][2] - quantile(alpha_u_boot_outer_orig, 0.025, na.rm = TRUE)
+CI_perc_low_alpha_l_trt_orig1 <- 2 * Orig[[1]][1] -
+  quantile(alpha_l_boot_outer_orig, 0.975, na.rm = TRUE)
+CI_perc_upper_alpha_u_trt_orig1 <- 2 * Orig[[1]][2] -
+  quantile(alpha_u_boot_outer_orig, 0.025, na.rm = TRUE)
 
 # Wald confidence set: bias-corrected and original
-CI_perc_low_alpha_l_trt_corr2   <- Orig_corr_l - qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = TRUE)
-CI_perc_upper_alpha_u_trt_corr2 <- Orig_corr_u + qnorm(0.975) * sd(alpha_u_boot_outer_corr, na.rm = TRUE)
+CI_perc_low_alpha_l_trt_corr2 <- Orig_corr_l -
+  qnorm(0.975) * sd(alpha_l_boot_outer_corr, na.rm = TRUE)
+CI_perc_upper_alpha_u_trt_corr2 <- Orig_corr_u +
+  qnorm(0.975) * sd(alpha_u_boot_outer_corr, na.rm = TRUE)
 
-CI_perc_low_alpha_l_trt_orig2   <- Orig[[1]][1] - qnorm(0.975) * sd(alpha_l_boot_outer_orig, na.rm = TRUE)
-CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2] + qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = TRUE)
+CI_perc_low_alpha_l_trt_orig2 <- Orig[[1]][1] -
+  qnorm(0.975) * sd(alpha_l_boot_outer_orig, na.rm = TRUE)
+CI_perc_upper_alpha_u_trt_orig2 <- Orig[[1]][2] +
+  qnorm(0.975) * sd(alpha_u_boot_outer_orig, na.rm = TRUE)
 ```
 
-The table below summarizes the results. The bias-corrected rows correspond to the estimates and confidence sets reported in the paper.
+The tables below summarize the point estimates and the 95% confidence sets for $(\alpha_a^l, \alpha_a^u)$. The bias-corrected rows correspond to the quantities reported in Table 1 of the paper; note that the paper's results are based on the real ARC data rather than on this simulated data set.
 
 ```{r alg3-table}
 selection_summary_point <- data.frame(
   Quantity = c("Original point estimate",
-               "Bias-corrected point estimate (Algorithm 2; 200 bootstraps)",
-               "Bias-corrected point estimate (Algorithm 3; 400 bootstraps)"),
+               "Bias-corrected (Algorithm 2; 200 replicates)",
+               "Bias-corrected (Algorithm 3; 400 outer replicates)"),
   alpha_l = c(trt_log_weight1_orig[1], trt_log_weight1_corr[1], Orig_corr_l),
   alpha_u = c(trt_log_weight1_orig[2], trt_log_weight1_corr[2], Orig_corr_u),
   row.names = NULL
@@ -719,14 +766,14 @@ selection_summary_set <- data.frame(
                "95% Wald CI (original)",
                "95% basic bootstrap CI (bias-corrected)",
                "95% Wald CI (bias-corrected)"),
-  ConfidenceSet_lower = c(CI_perc_low_alpha_l_trt_orig1, 
-                         CI_perc_low_alpha_l_trt_orig2,
-                         CI_perc_low_alpha_l_trt_corr1, 
-                         CI_perc_low_alpha_l_trt_corr2), 
-  ConfidenceSet_upper = c(CI_perc_upper_alpha_u_trt_orig1, 
-                          CI_perc_upper_alpha_u_trt_orig2, 
-                          CI_perc_upper_alpha_u_trt_corr1,
-                          CI_perc_upper_alpha_u_trt_corr2),
+  Lower = c(CI_perc_low_alpha_l_trt_orig1,
+            CI_perc_low_alpha_l_trt_orig2,
+            CI_perc_low_alpha_l_trt_corr1,
+            CI_perc_low_alpha_l_trt_corr2),
+  Upper = c(CI_perc_upper_alpha_u_trt_orig1,
+            CI_perc_upper_alpha_u_trt_orig2,
+            CI_perc_upper_alpha_u_trt_corr1,
+            CI_perc_upper_alpha_u_trt_corr2),
   row.names = NULL
 )
 knitr::kable(selection_summary_set, digits = 2, booktabs = TRUE)
@@ -753,24 +800,29 @@ data_ARC_trt_binary <- readRDS(file = "ARC_simu_data_200_logistic_trt")
 
 Alpha_seq_binary <- c(-0.8, -0.4, 0, 0.4, 0.8, 1.2)
 
-result_trt_logit_weight1 <- f_data_analysis_point(data      = data_ARC_trt_binary,
-                                                  link_type = "logit",
-                                                  Alpha_seq = Alpha_seq_binary,
-                                                  IF_type   = "weight1",
-                                                  SIM_model = "norm1coef")
+result_trt_logit_weight1 <- f_data_analysis_point(
+  data      = data_ARC_trt_binary,
+  link_type = "logit",
+  Alpha_seq = Alpha_seq_binary,
+  IF_type   = "weight1",
+  SIM_model = "norm1coef"
+)
 
-orig_input_binary <- fun_est_IF_onestep_analysis(df_sim    = data_ARC_trt_binary,
-                                                 Alpha_seq = seq(-3, 3, by = 0.01),
-                                                 range     = c(0.2, 0.5),
-                                                 SIM_model = "norm1coef",
-                                                 link_type = "logit",
-                                                 IF_type   = "weight1")
+orig_input_binary <- fun_est_IF_onestep_analysis(
+  df_sim    = data_ARC_trt_binary,
+  Alpha_seq = seq(-3, 3, by = 0.01),
+  range     = c(0.2, 0.5),
+  SIM_model = "norm1coef",
+  link_type = "logit",
+  IF_type   = "weight1"
+)
 ```
 
-Two points to note when changing the outcome type:
+Three points to note when changing the outcome type:
 
--   `paraboot_var()` and `Wald_CI()` use `Alpha_seq = c(-1.2, -0.8, -0.4, 0, 0.4, 0.8)` by default. Pass `Alpha_seq = Alpha_seq_binary` explicitly for the binary outcome.
--   `paraboot_var()` computes the bootstrap variance on the log scale, and the intervals above are transformed back with `exp()`. For other links, the transformation should be changed accordingly.
+-   When calling `paraboot_var()`, pass `Alpha_seq = Alpha_seq_binary` and `link = "logit"` for the binary outcome.
+-   For the logit link, use `qlogis()` instead of `log()` to compute `refer_mean`, and `plogis()` instead of `exp()` to transform the point estimate and the confidence interval back to the probability scale.
+-   Set `range = c(0.2, 0.5)` in all three sensitivity parameter selection functions (`fun_est_IF_onestep_analysis()`, `f_onestep_bias_adaptive()`, and `f_double_boot_onestep_adaptive()`), together with `link_type = "logit"`.
 
 ## Summary of main options
 
@@ -783,7 +835,7 @@ Two points to note when changing the outcome type:
 | `spline_seq_orig` | numeric vector | Times (days) at which $\mu(t)$ is reported by `f_data_analysis_line()` |
 | `range` | `c(1.2, 3)`, `c(0.2, 0.5)`, ... | Plausible range $(\mu_a^l, \mu_a^u)$ of the mean outcome |
 | `weight_type` | `"rademacher"`, `"normal"`, `"exp"` | Distribution of the multiplier weights |
-| `search_method` | `"adaptive"`, `"binary"`, `"grid"` | Search strategy for searching in Algorithms 2 and 3 |
+| `search_method` | `"adaptive"`, `"binary"`, `"grid"` | Search strategy over $\mathcal{A}_M$ in Algorithms 2 and 3 |
 | `L` | integer | Number of inner bootstrap replicates in Algorithm 3 |
 
 # Session information
@@ -791,3 +843,4 @@ Two points to note when changing the outcome type:
 ```{r session-info}
 sessionInfo()
 ```
+
