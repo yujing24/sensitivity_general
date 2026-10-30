@@ -3,7 +3,7 @@
 rm(list=ls())
 library(dplyr)
 
-source("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm/1. function_selection.R")
+source("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm/1. function_inference.R")
 setwd("/uufs/chpc.utah.edu/common/home/u6049227/General_sensitivity/data_analysis_norm")
 
 Alpha_seq = seq(-0.8, 1.2, by = 0.02)
